@@ -1,3 +1,4 @@
+# Mela source synchronization: Supabase active frontend -> GitHub editable source
 name: Sync Mela frontend source
 
 on:

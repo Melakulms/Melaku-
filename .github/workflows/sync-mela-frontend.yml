@@ -1,0 +1,74 @@
+name: Sync Mela frontend source
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/sync-mela-frontend.yml'
+  schedule:
+    - cron: '17 * * * *'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: mela-frontend-sync
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch authoritative active Mela frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          endpoint='https://duizgtmbptmlbyipreqg.supabase.co/functions/v1/mela-web'
+          curl --fail --silent --show-error --location \
+            --retry 3 --retry-all-errors \
+            -H 'Accept: text/plain' \
+            -D /tmp/mela-headers.txt \
+            "$endpoint" \
+            -o /tmp/mela-index.html
+
+          grep -Eiq '^<!doctype html>' /tmp/mela-index.html
+          grep -Eiq '<title>[[:space:]]*Mela' /tmp/mela-index.html
+
+          build="$(awk 'BEGIN{IGNORECASE=1} /^x-mela-build:/{gsub("\r",""); print $2}' /tmp/mela-headers.txt | tail -1)"
+          test -n "$build"
+
+          sha="$(sha256sum /tmp/mela-index.html | awk '{print $1}')"
+          cp /tmp/mela-index.html index.html
+
+          cat > mela.sync.json <<EOF
+          {
+            "source": "supabase-active-frontend",
+            "supabase_project_ref": "duizgtmbptmlbyipreqg",
+            "edge_function": "mela-web",
+            "build": "$build",
+            "sha256": "$sha",
+            "production_launch": false
+          }
+          EOF
+
+      - name: Commit source only when changed
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- index.html mela.sync.json; then
+            echo 'Mela frontend source already synchronized.'
+            exit 0
+          fi
+
+          git config user.name 'Mela Sync Bot'
+          git config user.email 'mela-sync-bot@users.noreply.github.com'
+          git add index.html mela.sync.json
+          build="$(python3 -c 'import json; print(json.load(open("mela.sync.json"))["build"])')"
+          git commit -m "Sync active Mela frontend ${build}"
+          git push

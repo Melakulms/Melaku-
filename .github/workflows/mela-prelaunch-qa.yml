@@ -60,6 +60,13 @@ jobs:
           print(f'Pre-launch source invariants pass for {build}.')
           PY
 
+      - name: Run low-impact live backend concurrency smoke
+        env:
+          MELA_QA_REQUESTS: '20'
+          MELA_QA_CONCURRENCY: '5'
+          MELA_QA_MAX_P95_MS: '5000'
+        run: npm run qa:load-smoke
+
       - name: Install browser matrix
         run: npx playwright install --with-deps chromium firefox webkit
 

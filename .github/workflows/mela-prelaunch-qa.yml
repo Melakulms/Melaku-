@@ -60,6 +60,9 @@ jobs:
           print(f'Pre-launch source invariants pass for {build}.')
           PY
 
+      - name: Verify protected workflow RPCs deny anonymous callers
+        run: node qa/security-smoke.mjs
+
       - name: Run low-impact live backend concurrency smoke
         env:
           MELA_QA_REQUESTS: '20'

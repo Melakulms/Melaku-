@@ -8,6 +8,7 @@ on:
       - 'index.html'
       - 'mela.sync.json'
       - 'package.json'
+      - 'playwright.config.js'
       - 'qa/**'
       - '.github/workflows/mela-prelaunch-qa.yml'
 
@@ -59,8 +60,8 @@ jobs:
           print(f'Pre-launch source invariants pass for {build}.')
           PY
 
-      - name: Install Chromium
-        run: npx playwright install --with-deps chromium
+      - name: Install browser matrix
+        run: npx playwright install --with-deps chromium firefox webkit
 
       - name: Start local frontend
         shell: bash
@@ -74,7 +75,7 @@ jobs:
           cat /tmp/mela-http.log
           exit 1
 
-      - name: Run Chromium integration smoke test
+      - name: Run desktop and mobile browser integration matrix
         env:
           MELA_QA_BASE_URL: http://127.0.0.1:4173
         run: npm run qa:public

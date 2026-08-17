@@ -1,6 +1,13 @@
 import { test, expect } from '@playwright/test';
 
 const BASE = process.env.MELA_QA_BASE_URL || 'http://127.0.0.1:4173';
+const LANGS = [
+  ['en', 'en-ET'],
+  ['am', 'am-ET'],
+  ['om', 'om-ET'],
+  ['ti', 'ti-ET'],
+  ['so', 'so-ET']
+];
 
 test('Mela pre-launch public shell stays connected, localized, and accessible', async ({ page }) => {
   await page.route('**/functions/v1/mela-web/api/health', async route => {
@@ -9,7 +16,7 @@ test('Mela pre-launch public shell stays connected, localized, and accessible', 
   });
 
   await page.goto(BASE, { waitUntil: 'domcontentloaded' });
-  await expect(page).toHaveTitle(/Mela v37 Integrated Pre-Launch Preview/);
+  await expect(page).toHaveTitle(/Mela v\d+ Integrated Pre-Launch Preview/);
   await expect(page.locator('html')).toHaveAttribute('lang', 'en-ET');
   await expect(page.locator('.skip')).toHaveAttribute('href', '#c');
   await expect(page.locator('#liveMasteryChip')).toHaveCount(1);
@@ -35,6 +42,13 @@ test('Mela pre-launch public shell stays connected, localized, and accessible', 
   await expect(page.locator('#hp')).toHaveText(localizedHero || '');
   await expect(page.locator('#hh')).toContainText('ክፍል');
 
+  for (const [code, tag] of LANGS) {
+    await page.locator('#lang').selectOption(code);
+    await expect(page.locator('html')).toHaveAttribute('lang', tag);
+    await expect(page.locator('#hh')).not.toHaveText('');
+  }
+
+  await page.locator('#lang').selectOption('en');
   await page.locator('#open').click();
   await expect(page.locator('#login')).toBeVisible();
   await expect(page.locator('#signin')).toBeVisible();

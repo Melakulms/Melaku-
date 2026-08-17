@@ -1,5 +1,5 @@
 # Mela source synchronization: Supabase active frontend -> GitHub editable source
-# Sync trigger marker: v36 integrated pre-launch
+# Sync trigger marker: v37 live-stats integration fix
 name: Sync Mela frontend source
 
 on:

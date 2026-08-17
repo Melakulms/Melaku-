@@ -2,7 +2,7 @@
   "source": "supabase-active-frontend",
   "supabase_project_ref": "duizgtmbptmlbyipreqg",
   "edge_function": "mela-web",
-  "build": "v36",
-  "sha256": "6c30ed6484e73c63d734e43b50bff14000e0f009b3dcc0b89f62f6cf7155fbdb",
+  "build": "v37",
+  "sha256": "f40e9645bed3e8236caec6fbb1b471f082ea872204768902f729a52b27a437da",
   "production_launch": false
 }

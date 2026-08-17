@@ -1,0 +1,80 @@
+name: Mela pre-launch integration QA
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'index.html'
+      - 'mela.sync.json'
+      - 'package.json'
+      - 'qa/**'
+      - '.github/workflows/mela-prelaunch-qa.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mela-prelaunch-qa
+  cancel-in-progress: true
+
+jobs:
+  public-browser-qa:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Build source
+        run: npm run build
+
+      - name: Enforce pre-launch source invariants
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, re, pathlib
+          html = pathlib.Path('index.html').read_text()
+          sync = json.loads(pathlib.Path('mela.sync.json').read_text())
+          build = sync['build']
+          assert sync.get('production_launch') is False, 'production_launch must remain false'
+          assert f'Mela {build} Integrated Pre-Launch Preview' in html, 'build label mismatch'
+          assert html.count('id="liveMasteryChip"') == 1, 'liveMasteryChip must be unique'
+          assert html.count('id="liveMasteryProgress"') == 1, 'liveMasteryProgress must be unique'
+          assert "$('liveQuestions').textContent=N(d.active_questions)" not in html, 'out-of-scope live-stat formatter regression'
+          assert 'const fmt=v=>Number(v||0).toLocaleString()' in html, 'live-stat formatter missing'
+          assert "if($('hp'))$('hp').textContent=" not in html, 'async health must not overwrite localized hero text'
+          assert re.search(r'<option value="am">', html), 'Amharic option missing'
+          assert re.search(r'<option value="om">', html), 'Afaan Oromo option missing'
+          assert re.search(r'<option value="ti">', html), 'Tigrinya option missing'
+          assert re.search(r'<option value="so">', html), 'Somali option missing'
+          print(f'Pre-launch source invariants pass for {build}.')
+          PY
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Start local frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m http.server 4173 --bind 127.0.0.1 > /tmp/mela-http.log 2>&1 &
+          for i in {1..20}; do
+            if curl --fail --silent http://127.0.0.1:4173/ >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/mela-http.log
+          exit 1
+
+      - name: Run Chromium integration smoke test
+        env:
+          MELA_QA_BASE_URL: http://127.0.0.1:4173
+        run: npm run qa:public

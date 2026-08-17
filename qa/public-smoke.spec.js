@@ -55,3 +55,31 @@ test('Mela pre-launch public shell stays connected, localized, and accessible', 
   await expect(page.locator('#forgot')).toBeVisible();
   await expect(page.locator('#new')).toBeVisible();
 });
+
+test('Mela public shell stays usable when backend health is slow', async ({ page }) => {
+  await page.route('**/functions/v1/mela-web/api/health', async route => {
+    await new Promise(resolve => setTimeout(resolve, 3000));
+    await route.continue();
+  });
+
+  await page.goto(BASE, { waitUntil: 'domcontentloaded' });
+  await expect(page.locator('#liveQChip')).toContainText('Loading live question inventory');
+  await page.locator('#lang').selectOption('so');
+  await expect(page.locator('html')).toHaveAttribute('lang', 'so-ET');
+  await expect(page.locator('#open')).toBeVisible();
+  await page.locator('#open').click();
+  await expect(page.locator('#login')).toBeVisible();
+  await expect(page.locator('#signin')).toBeVisible();
+});
+
+test('Mela public shell fails gracefully when backend health is temporarily offline', async ({ page }) => {
+  await page.route('**/functions/v1/mela-web/api/health', route => route.abort('failed'));
+  await page.goto(BASE, { waitUntil: 'domcontentloaded' });
+  await expect(page).toHaveTitle(/Mela v\d+ Integrated Pre-Launch Preview/);
+  await expect(page.locator('#liveQChip')).toContainText('Loading live question inventory');
+  await page.locator('#lang').selectOption('om');
+  await expect(page.locator('html')).toHaveAttribute('lang', 'om-ET');
+  await page.locator('#open').click();
+  await expect(page.locator('#login')).toBeVisible();
+  await expect(page.locator('#forgot')).toBeVisible();
+});

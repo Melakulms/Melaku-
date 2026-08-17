@@ -5,9 +5,11 @@ const REQUESTS = Number(process.env.MELA_QA_REQUESTS || 20);
 const CONCURRENCY = Number(process.env.MELA_QA_CONCURRENCY || 5);
 const MAX_P95_MS = Number(process.env.MELA_QA_MAX_P95_MS || 5000);
 const html = await readFile('index.html', 'utf8');
-const cfg = html.match(/const U='([^']+)',K='([^']+)'/);
-if (!cfg) throw new Error('Could not locate public Supabase URL/key in synchronized frontend');
-const [, supabaseUrl, publishableKey] = cfg;
+const urlMatch = html.match(/\bU\s*=\s*["'](https:\/\/[^"']+)["']/);
+const keyMatch = html.match(/\bK\s*=\s*["'](sb_publishable_[^"']+)["']/);
+if (!urlMatch || !keyMatch) throw new Error('Could not locate public Supabase URL/key in synchronized frontend');
+const supabaseUrl = urlMatch[1];
+const publishableKey = keyMatch[1];
 const endpoint = `${supabaseUrl}/functions/v1/mela-web/api/health`;
 
 let next = 0;

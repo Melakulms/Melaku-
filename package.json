@@ -1,14 +1,16 @@
 {
   "name": "mela-ai-studio",
   "private": true,
-  "version": "35.0.0",
+  "version": "37.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "vite build",
-    "preview": "vite preview --host 0.0.0.0"
+    "preview": "vite preview --host 0.0.0.0",
+    "qa:public": "playwright test qa/public-smoke.spec.js --project=chromium"
   },
   "devDependencies": {
+    "@playwright/test": "1.55.0",
     "vite": "8.1.5"
   }
 }

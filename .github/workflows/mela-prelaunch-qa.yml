@@ -3,7 +3,7 @@ name: Mela pre-launch integration QA
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches: [main, 'fix/mela-release-qa-hardening']
     paths:
       - 'index.html'
       - 'src/**'
@@ -33,7 +33,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: mela-prelaunch-qa-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.run_id }}
+  group: mela-prelaunch-qa-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
@@ -43,20 +43,16 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
-
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: npm
           cache-dependency-path: package-lock.json
-
       - name: Install dependencies
         run: npm install --no-audit --no-fund --package-lock=false
-
       - name: Build source
         run: npm run build
-
       - name: Verify generated production bundle
         shell: bash
         run: |
@@ -65,7 +61,6 @@ jobs:
           test -s dist/index.html
           grep -Eiq '^<!doctype html>' dist/index.html
           grep -Eiq '<title>[[:space:]]*Mela' dist/index.html
-
       - name: Enforce pre-launch source invariants
         shell: bash
         run: |
@@ -75,58 +70,49 @@ jobs:
           html = pathlib.Path('index.html').read_text()
           sync = json.loads(pathlib.Path('mela.sync.json').read_text())
           build = sync['build']
-          assert sync.get('production_launch') is False, 'production_launch must remain false'
-          assert f'Mela {build} Integrated Pre-Launch Preview' in html, 'build label mismatch'
-          assert html.count('id="liveMasteryChip"') == 1, 'liveMasteryChip must be unique'
-          assert html.count('id="liveMasteryProgress"') == 1, 'liveMasteryProgress must be unique'
-          assert "$('liveQuestions').textContent=N(d.active_questions)" not in html, 'out-of-scope live-stat formatter regression'
-          assert 'const fmt=v=>Number(v||0).toLocaleString()' in html, 'live-stat formatter missing'
-          assert "if($('hp'))$('hp').textContent=" not in html, 'async health must not overwrite localized hero text'
+          assert sync.get('production_launch') is False
+          assert f'Mela {build} Integrated Pre-Launch Preview' in html
+          assert html.count('id="liveMasteryChip"') == 1
+          assert html.count('id="liveMasteryProgress"') == 1
+          assert "$('liveQuestions').textContent=N(d.active_questions)" not in html
+          assert 'const fmt=v=>Number(v||0).toLocaleString()' in html
+          assert "if($('hp'))$('hp').textContent=" not in html
           for locale in ['am','om','ti','so']:
-              assert re.search(fr'<option value="{locale}">', html), f'{locale} option missing'
-          print(f'Pre-launch source invariants pass for {build}.')
+              assert re.search(fr'<option value="{locale}">', html)
           PY
-
       - name: Verify canonical production frontend on Netlify
         env:
           MELA_QA_FRONTEND_URL: https://mela-review-preview.netlify.app
         run: node qa/production-contract.mjs
-
       - name: Verify Supabase backend health separately
         env:
           MELA_QA_BUILD_ENDPOINT: https://duizgtmbptmlbyipreqg.supabase.co/functions/v1/mela-web
         run: node qa/backend-contract.mjs
-
       - name: Verify protected workflow RPCs deny anonymous callers
         run: node qa/security-smoke.mjs
-
       - name: Run low-impact live backend concurrency smoke
         env:
           MELA_QA_REQUESTS: '20'
           MELA_QA_CONCURRENCY: '5'
           MELA_QA_MAX_P95_MS: '5000'
         run: npm run qa:load-smoke
-
       - name: Install browser matrix
         run: npx playwright install --with-deps chromium firefox webkit
-
-      - name: Start local frontend
+      - name: Start local production bundle
         shell: bash
         run: |
           set -euo pipefail
-          python3 -m http.server 4173 --bind 127.0.0.1 > /tmp/mela-http.log 2>&1 &
+          python3 -m http.server 4173 --bind 127.0.0.1 --directory dist > /tmp/mela-http.log 2>&1 &
           for i in {1..20}; do
             if curl --fail --silent http://127.0.0.1:4173/ >/dev/null; then exit 0; fi
             sleep 1
           done
           cat /tmp/mela-http.log
           exit 1
-
       - name: Run desktop and mobile browser integration matrix
         env:
           MELA_QA_BASE_URL: http://127.0.0.1:4173
         run: npm run qa:public
-
       - name: Upload QA diagnostics on failure
         if: failure()
         uses: actions/upload-artifact@v4

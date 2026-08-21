@@ -40,6 +40,15 @@ jobs:
       - name: Build source
         run: npm run build
 
+      - name: Verify generated production bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f dist/index.html
+          test -s dist/index.html
+          grep -Eiq '^<!doctype html>' dist/index.html
+          grep -Eiq '<title>[[:space:]]*Mela' dist/index.html
+
       - name: Enforce pre-launch source invariants
         shell: bash
         run: |
@@ -62,6 +71,11 @@ jobs:
           assert re.search(r'<option value="so">', html), 'Somali option missing'
           print(f'Pre-launch source invariants pass for {build}.')
           PY
+
+      - name: Verify active production frontend contract
+        env:
+          MELA_QA_BUILD_ENDPOINT: https://duizgtmbptmlbyipreqg.supabase.co/functions/v1/mela-web
+        run: node qa/production-contract.mjs
 
       - name: Verify protected workflow RPCs deny anonymous callers
         run: node qa/security-smoke.mjs

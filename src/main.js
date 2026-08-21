@@ -84,7 +84,6 @@ function wireOnboarding(){
       if(data.session){setTimeout(()=>location.reload(),700);}
     }catch(err){const msg=document.getElementById('msg');if(msg){msg.className='chip warn';msg.textContent=err.message||String(err)}btn.disabled=false;btn.textContent='Create';}
   },true);
-  // Preserve and synchronize the five original UI languages with the new six-language registration choice.
   langInput?.addEventListener('change',()=>{const v=langInput.value;localStorage.setItem('mela_ui_language',v);});
 }
 

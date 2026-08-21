@@ -1,0 +1,44 @@
+name: Finalize Mela Afar bootstrap
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply final Afar compatibility patch
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('src/main.js')
+          s = p.read_text()
+          old = "const compatibility=`<script>"
+          if old not in s:
+              needle = "  return html.replace('</head>',style+'</head>').replace('<body>', '<body>'+gate);"
+              replacement = "  const compatibility=`<script>(function(){try{if(window.L&&typeof L==='object'){L.aa=['Afar','Qafar af','aa-ET'];}if(window.T&&typeof T==='object'){T.aa=['MELA · QAFAR AF','Kutaa → Barnoota → Boqonnaa → Mata-duree','Gaaffiin Mela af Qafar keessatti ni jira.','Mela bani'];}if(window.NAVTXT&&typeof NAVTXT==='object'){NAVTXT.aa={q:'Baankii Gaaffii',learn:'Barnoota',src:'Maddoota Addunyaa',apps:'Iyyannoowwan Koo',access:'Dhaqqabummaa',review:'Gamaaggama Qulqullinaa',ops:'Hojiiwwan',read:'🔊 Narrate'};}var s=document.getElementById('lang');if(s&&!Array.from(s.options).some(function(o){return o.value==='aa';})){var o=document.createElement('option');o.value='aa';o.textContent='Qafar af';s.appendChild(o);}}catch(e){console.warn('Afar localization compatibility patch',e);}})();</script>`;\n  return html.replace('</head>',style+'</head>').replace('<body>', '<body>'+gate).replace('</body>',compatibility+'</body>');"
+              if needle not in s:
+                  raise SystemExit('Expected injectDesign anchor not found')
+              s = s.replace(needle, replacement, 1)
+          needle = "  if(langInput)langInput.innerHTML=Object.entries(langs).map(([k,v])=>`<option value=\"${k}\">${v}</option>`).join('');"
+          replacement = "  if(langInput){if(!Array.from(langInput.options).some(o=>o.value==='aa')){langInput.insertAdjacentHTML('beforeend','<option value=\"aa\">Qafar af</option>');}}\n" + needle
+          if needle in s and replacement not in s:
+              s = s.replace(needle, replacement, 1)
+          p.write_text(s)
+          PY
+      - name: Remove one-time runner
+        run: rm -f .github/workflows/finalize-afar-bootstrap.yml
+      - name: Commit finalization
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/main.js .github/workflows/finalize-afar-bootstrap.yml
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'fix: complete Afar localization bootstrap'
+          git push

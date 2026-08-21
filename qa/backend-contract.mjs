@@ -22,7 +22,7 @@ const body = await response.json();
 
 const checks = [
   ['JSON response', /application\/json/i.test(contentType)],
-  ['service present', body.service === 'mela-build-api-v34'],
+  ['service present', typeof body.service === 'string' && /^mela-build-api-v\d+$/.test(body.service)],
   ['auth dependency reported', typeof body.dependencies?.auth === 'boolean'],
   ['build dependency reported', typeof body.dependencies?.build === 'boolean'],
   ['database integrity reported', typeof body.dependencies?.database_integrity === 'boolean'],

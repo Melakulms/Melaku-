@@ -6,7 +6,11 @@ let response;
 try {
   response = await fetch(endpoint, {
     cache: 'no-store',
-    headers: { Accept: 'text/plain' },
+    // Ask for the representation we are actually validating. The previous
+    // value (text/plain) was contradictory to this HTML production contract
+    // and could trigger content negotiation/proxy behavior that masked the
+    // real frontend MIME type.
+    headers: { Accept: 'text/html,application/xhtml+xml;q=0.9,*/*;q=0.1' },
     signal: controller.signal,
   });
 } finally {

@@ -1,0 +1,5 @@
+Trigger file for Mela prelaunch QA.
+
+This no-op file was created by GitHub Copilot to trigger the mela-prelaunch-qa workflow on push to main.
+
+Timestamp: 2026-08-21T19:40:00Z

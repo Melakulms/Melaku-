@@ -25,6 +25,7 @@ concurrency:
 jobs:
   public-browser-qa:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -33,6 +34,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
+          cache: npm
+          cache-dependency-path: package.json
 
       - name: Install dependencies
         run: npm install --no-audit --no-fund
@@ -106,3 +109,15 @@ jobs:
         env:
           MELA_QA_BASE_URL: http://127.0.0.1:4173
         run: npm run qa:public
+
+      - name: Upload QA diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mela-prelaunch-qa-diagnostics
+          path: |
+            /tmp/mela-http.log
+            test-results/
+            playwright-report/
+          if-no-files-found: ignore
+          retention-days: 7

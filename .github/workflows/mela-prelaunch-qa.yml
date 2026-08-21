@@ -32,8 +32,6 @@ on:
 permissions:
   contents: read
 
-# Never cancel a main-branch run because another commit arrived. Rapid-fire
-# commits must not hide a failed release check behind a newer green run.
 concurrency:
   group: mela-prelaunch-qa-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
@@ -53,9 +51,6 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
 
-      # The repository currently contains dependency metadata but not a
-      # complete npm v3 lock graph. npm ci would therefore fail before QA.
-      # Use npm install until a fully generated lockfile is committed.
       - name: Install dependencies
         run: npm install --no-audit --no-fund --package-lock=false
 
@@ -87,17 +82,20 @@ jobs:
           assert "$('liveQuestions').textContent=N(d.active_questions)" not in html, 'out-of-scope live-stat formatter regression'
           assert 'const fmt=v=>Number(v||0).toLocaleString()' in html, 'live-stat formatter missing'
           assert "if($('hp'))$('hp').textContent=" not in html, 'async health must not overwrite localized hero text'
-          assert re.search(r'<option value="am">', html), 'Amharic option missing'
-          assert re.search(r'<option value="om">', html), 'Afaan Oromo option missing'
-          assert re.search(r'<option value="ti">', html), 'Tigrinya option missing'
-          assert re.search(r'<option value="so">', html), 'Somali option missing'
+          for locale in ['am','om','ti','so']:
+              assert re.search(fr'<option value="{locale}">', html), f'{locale} option missing'
           print(f'Pre-launch source invariants pass for {build}.')
           PY
 
-      - name: Verify active production frontend contract
+      - name: Verify canonical production frontend on Netlify
+        env:
+          MELA_QA_FRONTEND_URL: https://mela-review-preview.netlify.app
+        run: node qa/production-contract.mjs
+
+      - name: Verify Supabase backend health separately
         env:
           MELA_QA_BUILD_ENDPOINT: https://duizgtmbptmlbyipreqg.supabase.co/functions/v1/mela-web
-        run: node qa/production-contract.mjs
+        run: node qa/backend-contract.mjs
 
       - name: Verify protected workflow RPCs deny anonymous callers
         run: node qa/security-smoke.mjs

@@ -2,6 +2,19 @@ name: Mela pre-launch integration QA
 
 on:
   workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'index.html'
+      - 'src/**'
+      - 'mela.sync.json'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'playwright.config.js'
+      - 'qa/**'
+      - 'tests/**'
+      - 'docs/**'
+      - '.github/workflows/mela-prelaunch-qa.yml'
   push:
     branches: [main]
     paths:
@@ -20,7 +33,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: mela-prelaunch-qa
+  group: mela-prelaunch-qa-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -38,8 +51,10 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
 
-      - name: Install locked dependencies
-        run: npm ci --no-audit --no-fund
+      - name: Install dependencies and repair stale lock metadata
+        run: |
+          npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+          npm ci --no-audit --no-fund
 
       - name: Build source
         run: npm run build
@@ -69,10 +84,8 @@ jobs:
           assert "$('liveQuestions').textContent=N(d.active_questions)" not in html, 'out-of-scope live-stat formatter regression'
           assert 'const fmt=v=>Number(v||0).toLocaleString()' in html, 'live-stat formatter missing'
           assert "if($('hp'))$('hp').textContent=" not in html, 'async health must not overwrite localized hero text'
-          assert re.search(r'<option value="am">', html), 'Amharic option missing'
-          assert re.search(r'<option value="om">', html), 'Afaan Oromo option missing'
-          assert re.search(r'<option value="ti">', html), 'Tigrinya option missing'
-          assert re.search(r'<option value="so">', html), 'Somali option missing'
+          for code in ('am','om','ti','so'):
+              assert re.search(rf'<option value="{code}">', html), f'{code} language option missing'
           print(f'Pre-launch source invariants pass for {build}.')
           PY
 

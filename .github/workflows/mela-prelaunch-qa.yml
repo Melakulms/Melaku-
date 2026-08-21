@@ -15,13 +15,28 @@ on:
       - 'tests/**'
       - 'docs/**'
       - '.github/workflows/mela-prelaunch-qa.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'index.html'
+      - 'src/**'
+      - 'mela.sync.json'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'playwright.config.js'
+      - 'qa/**'
+      - 'tests/**'
+      - 'docs/**'
+      - '.github/workflows/mela-prelaunch-qa.yml'
 
 permissions:
   contents: read
 
+# Never cancel a main-branch run because another commit arrived. Rapid-fire
+# commits must not hide a failed release check behind a newer green run.
 concurrency:
-  group: mela-prelaunch-qa
-  cancel-in-progress: true
+  group: mela-prelaunch-qa-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   public-browser-qa:
@@ -38,8 +53,11 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
 
-      - name: Install locked dependencies
-        run: npm ci --no-audit --no-fund
+      # The repository currently contains dependency metadata but not a
+      # complete npm v3 lock graph. npm ci would therefore fail before QA.
+      # Use npm install until a fully generated lockfile is committed.
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund --package-lock=false
 
       - name: Build source
         run: npm run build

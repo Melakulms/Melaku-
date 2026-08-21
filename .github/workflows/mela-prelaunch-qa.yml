@@ -6,11 +6,13 @@ on:
     branches: [main]
     paths:
       - 'index.html'
+      - 'src/**'
       - 'mela.sync.json'
       - 'package.json'
       - 'playwright.config.js'
       - 'qa/**'
       - 'tests/**'
+      - 'docs/**'
       - '.github/workflows/mela-prelaunch-qa.yml'
 
 permissions:

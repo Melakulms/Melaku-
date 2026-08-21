@@ -10,6 +10,7 @@ on:
       - 'package.json'
       - 'playwright.config.js'
       - 'qa/**'
+      - 'tests/**'
       - '.github/workflows/mela-prelaunch-qa.yml'
 
 permissions:

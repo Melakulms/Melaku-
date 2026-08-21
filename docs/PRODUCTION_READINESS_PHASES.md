@@ -16,8 +16,8 @@ This document is the execution gate for the remaining production work. A phase i
 ### Current evidence
 The synchronized backend reports 142,396 active questions, 1,022 verified work domains and 1,167 verified education domains. These satisfy the numerical thresholds in the Playwright acceptance test.
 
-### Required implementation gate
-The six-language test currently requires English, Amharic, Afaan Oromo, Tigrinya, Somali and Afar. The repository public shell currently exposes five selectors; Afar (`aa` / `aa-ET`) must be implemented in the frontend before Phase 1 can be marked green.
+### Language contract
+The production public shell supports five languages: English, Amharic, Afaan Oromo, Tigrinya and Somali. The automated smoke suites must validate exactly these supported locales. Afar (`aa` / `aa-ET`) is retired and is not a production requirement.
 
 ## Phase 2 — Backend, security and authorization
 

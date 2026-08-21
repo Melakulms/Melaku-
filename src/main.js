@@ -24,7 +24,8 @@ const langs={en:'English',am:'አማርኛ',om:'Afaan Oromoo',ti:'ትግርኛ',
 function injectDesign(html){
   const style=`<style>${css}</style>`;
   const gate=`<div id="role-gate"><div class="role-panel"><div class="role-head"><div class="mark">M</div><div><h2>Create your Mela identity</h2><p>Choose your language and account type. Your selection controls your workspace.</p></div></div><div class="role-error" id="role-error"></div><h3>1. Choose language</h3><div class="lang-grid">${Object.entries(langs).map(([k,v])=>`<button class="lang-btn ${k==='en'?'selected':''}" data-lang="${k}">${v}</button>`).join('')}</div><h3>2. Choose account type</h3><div class="role-grid">${Object.entries(roleDefs).map(([k,v])=>`<button class="role-card" data-role="${k}"><div class="role-icon">${v[0]}</div><b>${v[1]}</b><span>${v[2]}</span></button>`).join('')}</div><div class="role-actions"><button class="btn" id="role-cancel">Cancel</button><button class="btn pri" id="role-continue">Continue to registration</button></div></div></div><div id="role-strip"><span>Account workspace: <b id="role-name">Member</b></span><span class="role-pill" id="role-lang">English</span></div>`;
-  return html.replace('</head>',style+'</head>').replace('<body>', '<body>'+gate);
+  const compatibility=`<script>(function(){try{if(window.L&&typeof L==='object'){L.aa=['Afar','Qafar af','aa-ET'];}if(window.T&&typeof T==='object'){T.aa=['MELA · QAFAR AF','Kutaa → Barnoota → Boqonnaa → Mata-duree','Gaaffiin Mela af Qafar keessatti ni jira.','Mela bani'];}if(window.NAVTXT&&typeof NAVTXT==='object'){NAVTXT.aa={q:'Baankii Gaaffii',learn:'Barnoota',src:'Maddoota Addunyaa',apps:'Iyyannoowwan Koo',access:'Dhaqqabummaa',review:'Gamaaggama Qulqullinaa',ops:'Hojiiwwan',read:'🔊 Narrate'};}var s=document.getElementById('lang');if(s&&!Array.from(s.options).some(function(o){return o.value==='aa';})){var o=document.createElement('option');o.value='aa';o.textContent='Qafar af';s.appendChild(o);}}catch(e){console.warn('Afar localization compatibility patch',e);}})();</script>`;
+  return html.replace('</head>',style+'</head>').replace('<body>', '<body>'+gate).replace('</body>',compatibility+'</body>');
 }
 
 async function loadMela(){
@@ -57,6 +58,7 @@ function wireOnboarding(){
   const signup=document.getElementById('signup');
   const create=document.getElementById('create');
   const newBtn=document.getElementById('new');
+  if(langInput){if(!Array.from(langInput.options).some(o=>o.value==='aa')){langInput.insertAdjacentHTML('beforeend','<option value="aa">Qafar af</option>');}}
   if(langInput)langInput.innerHTML=Object.entries(langs).map(([k,v])=>`<option value="${k}">${v}</option>`).join('');
   const saved=JSON.parse(localStorage.getItem('mela_identity')||'null');
   if(saved&&saved.role){strip.style.display='block';document.getElementById('role-name').textContent=roleDefs[saved.role]?.[1]||saved.role;document.getElementById('role-lang').textContent=langs[saved.lang]||saved.lang||'English';}

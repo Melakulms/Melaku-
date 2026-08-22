@@ -14,6 +14,7 @@ on:
       - 'qa/**'
       - 'tests/**'
       - 'docs/**'
+      - 'netlify.toml'
       - '.github/workflows/mela-prelaunch-qa.yml'
 
 permissions:

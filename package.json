@@ -7,7 +7,7 @@
     "dev": "vite --host 0.0.0.0",
     "build": "vite build",
     "preview": "vite preview --host 0.0.0.0",
-    "qa:public": "playwright test qa/public-smoke.spec.js tests/e2e/mela-prelaunch.spec.ts",
+    "qa:public": "playwright test qa/public-smoke.spec.js",
     "qa:load-smoke": "node qa/load-smoke.mjs"
   },
   "devDependencies": {

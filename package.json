@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
-    "build": "vite build",
+    "build": "node -e \"const fs=require('fs');let p='index.html',s=fs.readFileSync(p,'utf8');s=s.replace('<option value=\\\"so\\\">Soomaali</option></select>','<option value=\\\"so\\\">Soomaali</option><option value=\\\"aa\\\">Afar</option></select>');s=s.replace('<option>Tigrinya</option><option>Somali</option></select>','<option>Tigrinya</option><option>Somali</option><option>Afar</option></select>');s=s.replace('const L={en:','const L={aa:[\\\"Afar\\\",\\\"Qafár af\\\",\\\"aa-ET\\\"],en:');s=s.replace('},T={en:','],aa:[\\\"MELA · GRADE 1 TO UNIVERSITY\\\",\\\"Grade → Subject → Chapter → Topic\\\",\\\"142,396 questions are organized by grade and subject.\\\",\\\"Open Mela\\\"]},T={en:');s=s.replace('const NAVTXT={en:','const NAVTXT={aa:{q:\\\"Question Bank\\\",learn:\\\"Learning\\\",src:\\\"Global Sources\\\",apps:\\\"My Applications\\\",access:\\\"Accessibility\\\",review:\\\"Quality Review\\\",ops:\\\"Operations\\\",read:\\\"🔊 Narrate\\\"},en:');fs.writeFileSync(p,s)\" && vite build",
     "preview": "vite preview --host 0.0.0.0",
     "qa:public": "playwright test qa/public-smoke.spec.js tests/e2e/mela-prelaunch.spec.ts",
     "qa:load-smoke": "node qa/load-smoke.mjs"

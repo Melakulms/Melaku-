@@ -49,8 +49,10 @@ jobs:
           node-version: '22'
           cache: npm
           cache-dependency-path: package-lock.json
-      - name: Install locked dependencies
-        run: npm ci --no-audit --no-fund
+      - name: Bootstrap and validate dependency lock
+        run: |
+          npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+          npm ci --no-audit --no-fund
       - name: Build source
         run: npm run build
       - name: Verify generated production bundle

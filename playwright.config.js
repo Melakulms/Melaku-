@@ -1,15 +1,18 @@
 import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
-  testDir: './qa',
+  testDir: './',
+  testMatch: ['qa/**/*.spec.js', 'tests/e2e/**/*.spec.ts'],
   timeout: 30000,
   expect: { timeout: 15000 },
   fullyParallel: true,
-  retries: 1,
-  reporter: 'line',
+  retries: process.env.CI ? 2 : 1,
+  reporter: process.env.CI ? [['line'], ['html', { outputFolder: 'playwright-report', open: 'never' }]] : 'line',
   use: {
     baseURL: process.env.MELA_QA_BASE_URL || 'http://127.0.0.1:4173',
-    trace: 'retain-on-failure'
+    trace: 'retain-on-failure',
+    screenshot: 'only-on-failure',
+    video: 'retain-on-failure'
   },
   projects: [
     { name: 'chromium-desktop', use: { ...devices['Desktop Chrome'] } },

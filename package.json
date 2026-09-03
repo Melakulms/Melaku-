@@ -8,6 +8,8 @@
     "build": "vite build",
     "preview": "vite preview --host 0.0.0.0",
     "qa:public": "playwright test qa/public-smoke.spec.js",
+    "qa:e2e": "playwright test tests/e2e",
+    "qa:all": "playwright test",
     "qa:load-smoke": "node qa/load-smoke.mjs"
   },
   "devDependencies": {

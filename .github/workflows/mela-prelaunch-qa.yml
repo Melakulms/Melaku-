@@ -84,6 +84,7 @@ jobs:
       - name: Verify AI tool-call run linkage regression guard
         run: node qa/ai-tool-call-run-linkage.mjs
 
+      # The live mela-web function was redeployed as v22 immediately before this run.
       - name: Verify active production frontend contract
         env:
           MELA_QA_BUILD_ENDPOINT: https://duizgtmbptmlbyipreqg.supabase.co/functions/v1/mela-web

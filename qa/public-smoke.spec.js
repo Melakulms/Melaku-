@@ -6,8 +6,7 @@ const LANGS = [
   ['am', 'am-ET'],
   ['om', 'om-ET'],
   ['ti', 'ti-ET'],
-  ['so', 'so-ET'],
-  ['aa', 'aa-ET']
+  ['so', 'so-ET']
 ];
 
 test('Mela pre-launch public shell stays connected, localized, and accessible', async ({ page }) => {

@@ -13,9 +13,22 @@ export type MelaAIResponse = {
   requires_approval?: boolean;
   task_id?: string;
   error?: string;
+  status?: string;
+  mode?: string;
+  attempts?: number;
+  result?: {
+    ok?: boolean;
+    status?: string;
+    task_id?: string | null;
+    run_id?: string;
+    agent?: { key: string; name: string; domain: string };
+    tool?: string | null;
+    response?: string;
+    retries?: number;
+  };
 };
 
-/** Thin client for the shared MELA AI Core. It deliberately accepts only the user's JWT. */
+/** Thin client for the durable MELA AI Coordinator. It deliberately accepts only the user's JWT. */
 export async function callMelaAICore(
   request: MelaAIRequest,
   options: { supabaseUrl: string; accessToken: string; signal?: AbortSignal }
@@ -23,7 +36,7 @@ export async function callMelaAICore(
   if (!request.message?.trim()) throw new Error('Message is required');
   if (!options.supabaseUrl || !options.accessToken) throw new Error('Authenticated MELA session required');
 
-  const response = await fetch(`${options.supabaseUrl.replace(/\/$/, '')}/functions/v1/mela-ai-core`, {
+  const response = await fetch(`${options.supabaseUrl.replace(/\/$/, '')}/functions/v1/mela-ai-coordinator-v2`, {
     method: 'POST',
     signal: options.signal,
     headers: {
@@ -35,6 +48,13 @@ export async function callMelaAICore(
 
   const data = (await response.json().catch(() => ({}))) as MelaAIResponse;
   if (!response.ok) throw new Error(data.error || `MELA AI request failed (${response.status})`);
+
+  // Keep the existing UI contract stable while consuming the durable execution response.
+  if (data.result?.response && !data.response) data.response = data.result.response;
+  if (data.result?.task_id && !data.task_id) data.task_id = data.result.task_id;
+  if (data.mode === 'approval' || data.mode === 'approval_required') data.requires_approval = true;
+  if (data.result?.agent && !data.agent) data.agent = data.result.agent;
+
   return data;
 }
 

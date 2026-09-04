@@ -40,9 +40,8 @@ jobs:
           cache-dependency-path: package-lock.json
 
       # The repository lockfile currently contains only the root package metadata.
-      # npm ci therefore fails before any application QA can run. Use npm install
-      # temporarily so CI can resolve the declared dependencies; a fully resolved
-      # lockfile should be committed once dependency resolution is available.
+      # npm ci therefore fails before application QA can run. Use npm install
+      # temporarily until a fully resolved lockfile is available.
       - name: Install dependencies
         run: npm install --no-audit --no-fund
 
@@ -111,10 +110,10 @@ jobs:
           cat /tmp/mela-http.log
           exit 1
 
-      - name: Run desktop and mobile browser integration matrix
+      - name: Run complete desktop and mobile browser integration matrix
         env:
           MELA_QA_BASE_URL: http://127.0.0.1:4173
-        run: npm run qa:public
+        run: npm run qa:all
 
       - name: Upload QA diagnostics on failure
         if: failure()

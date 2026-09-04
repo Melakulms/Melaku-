@@ -1,5 +1,6 @@
 name: Mela pre-launch integration QA
 
+# CI is intentionally pre-launch: production_launch remains false until the full authenticated E2E gate passes.
 on:
   workflow_dispatch:
   push:

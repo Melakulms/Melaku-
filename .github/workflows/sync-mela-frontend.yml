@@ -34,15 +34,18 @@ jobs:
           endpoint='https://duizgtmbptmlbyipreqg.supabase.co/functions/v1/mela-web'
           curl --fail --silent --show-error --location \
             --retry 3 --retry-all-errors \
-            -H 'Accept: text/plain' \
+            -H 'Accept: text/html' \
             -D /tmp/mela-headers.txt \
             "$endpoint" \
             -o /tmp/mela-index.html
 
-          grep -Eiq '^<!doctype html>' /tmp/mela-index.html
+          # The live function may emit leading whitespace/BOM before the HTML doctype.
+          grep -Eiq '^[[:space:]]*(<!doctype html>|<html[[:space:]>])' /tmp/mela-index.html
           grep -Eiq '<title>[[:space:]]*Mela' /tmp/mela-index.html
 
-          build="$(awk 'BEGIN{IGNORECASE=1} /^x-mela-build:/{gsub("\r",""); print $2}' /tmp/mela-headers.txt | tail -1)"
+          # Use POSIX-compatible awk; Ubuntu runners use mawk by default and do not
+          # reliably honor gawk's IGNORECASE variable.
+          build="$(awk 'tolower($1)=="x-mela-build:" {gsub("\r",""); print $2}' /tmp/mela-headers.txt | tail -1)"
           test -n "$build"
 
           sha="$(sha256sum /tmp/mela-index.html | awk '{print $1}')"

@@ -45,11 +45,8 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
 
-      # The repository lockfile currently contains only the root package metadata.
-      # npm ci therefore fails before application QA can run. Use npm install
-      # temporarily until a fully resolved lockfile is available.
-      - name: Install dependencies
-        run: npm install --no-audit --no-fund
+      - name: Install dependencies reproducibly
+        run: npm ci --no-audit --no-fund
 
       - name: Build source
         run: npm run build

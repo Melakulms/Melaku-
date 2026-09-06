@@ -1,5 +1,5 @@
 # Mela source synchronization: Supabase active frontend -> GitHub editable source
-# Sync trigger marker: v37 live-stats integration fix
+# Sync trigger marker: v37 live-stats integration fix + CI validation hardening
 name: Sync Mela frontend source
 
 on:
@@ -39,13 +39,28 @@ jobs:
             "$endpoint" \
             -o /tmp/mela-index.html
 
-          # The live function may emit leading whitespace/BOM before the HTML doctype.
-          grep -Eiq '^[[:space:]]*(<!doctype html>|<html[[:space:]>])' /tmp/mela-index.html
-          grep -Eiq '<title>[[:space:]]*Mela' /tmp/mela-index.html
+          # Validate the live response with Python so BOM/whitespace/case differences
+          # cannot make a valid HTML response fail the CI gate.
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
 
-          # Use POSIX-compatible awk; Ubuntu runners use mawk by default and do not
-          # reliably honor gawk's IGNORECASE variable.
-          build="$(awk 'tolower($1)=="x-mela-build:" {gsub("\r",""); print $2}' /tmp/mela-headers.txt | tail -1)"
+          html = Path('/tmp/mela-index.html').read_text(encoding='utf-8-sig')
+          normalized = html.lstrip()
+          if not re.match(r'(?is)^(?:<!doctype\s+html\b|<html\b)', normalized):
+              raise SystemExit('Live mela-web response is not an HTML document')
+          if not re.search(r'(?is)<title>\s*Mela\b', html):
+              raise SystemExit('Live mela-web response does not contain a Mela title')
+          PY
+
+          build="$(python3 - <<'PY'
+          from pathlib import Path
+          import re
+          text = Path('/tmp/mela-headers.txt').read_text(encoding='utf-8-sig')
+          values = re.findall(r'(?im)^x-mela-build:\s*([^\r\n]+)', text)
+          print(values[-1].strip() if values else '')
+          PY
+          )"
           test -n "$build"
 
           sha="$(sha256sum /tmp/mela-index.html | awk '{print $1}')"

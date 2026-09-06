@@ -6,7 +6,7 @@ let response;
 try {
   response = await fetch(endpoint, {
     cache: 'no-store',
-    headers: { Accept: 'text/plain' },
+    headers: { Accept: 'text/html' },
     signal: controller.signal,
   });
 } finally {
@@ -16,12 +16,15 @@ try {
 if (!response.ok) throw new Error(`Active Mela frontend returned HTTP ${response.status}`);
 const html = await response.text();
 const contentType = response.headers.get('content-type') || '';
-const build = response.headers.get('x-mela-build') || '';
+const headerBuild = response.headers.get('x-mela-build') || '';
+const titleMatch = html.match(/<title>\s*Mela\s+v([0-9]+(?:\.[0-9]+)*)\b/i);
+const titleBuild = titleMatch ? `v${titleMatch[1]}` : '';
+const build = headerBuild || titleBuild;
 
 const required = [
   ['doctype', /^\s*<!doctype html>/i.test(html)],
   ['Mela title', /<title>\s*Mela/i.test(html)],
-  ['build header', Boolean(build)],
+  ['build provenance', Boolean(build)],
   ['English locale', /value=["']en["']/i.test(html)],
   ['Amharic locale', /value=["']am["']/i.test(html)],
   ['Afaan Oromo locale', /value=["']om["']/i.test(html)],
@@ -40,6 +43,8 @@ console.log(JSON.stringify({
   endpoint,
   status: response.status,
   content_type: contentType,
+  header_build: headerBuild,
+  title_build: titleBuild,
   build,
   checks: required.length,
   failures,

@@ -21,6 +21,11 @@ on:
 permissions:
   contents: read
 
+env:
+  # Repository variable MELA_FRONTEND_URL must point to the real HTML-serving production frontend.
+  # Do not set this to a Supabase Edge Function URL.
+  MELA_QA_BUILD_ENDPOINT: ${{ vars.MELA_FRONTEND_URL }}
+
 concurrency:
   group: mela-prelaunch-qa
   cancel-in-progress: true
@@ -85,8 +90,6 @@ jobs:
         run: node qa/ai-tool-call-run-linkage.mjs
 
       - name: Verify active production frontend contract
-        env:
-          MELA_QA_BUILD_ENDPOINT: https://duizgtmbptmlbyipreqg.supabase.co/functions/v1/mela-web
         run: node qa/production-contract.mjs
 
       - name: Verify protected workflow RPCs deny anonymous callers

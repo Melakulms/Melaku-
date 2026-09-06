@@ -1,5 +1,13 @@
-// Mela production contract: validate the live HTML response with Accept: text/html and versioned build fallback.
-const endpoint = process.env.MELA_QA_BUILD_ENDPOINT || 'https://duizgtmbptmlbyipreqg.supabase.co/functions/v1/mela-web';
+// Mela production contract: validate the actual frontend host, not a Supabase Edge Function.
+// Supabase-hosted Edge Functions do not provide the required production HTML MIME contract on the default domain.
+const endpoint = process.env.MELA_QA_BUILD_ENDPOINT || '';
+
+if (!endpoint) {
+  throw new Error('MELA_QA_BUILD_ENDPOINT is required and must be the real production frontend URL. Do not point this contract at a Supabase Edge Function.');
+}
+if (/supabase\.co\/functions\/v1\//i.test(endpoint)) {
+  throw new Error(`Invalid production frontend endpoint: ${endpoint}. Supabase Edge Functions are backend endpoints; use the actual HTML frontend host.`);
+}
 
 const controller = new AbortController();
 const timeout = setTimeout(() => controller.abort(), 15000);
@@ -52,6 +60,6 @@ console.log(JSON.stringify({
 }, null, 2));
 
 if (!/text\/html|application\/xhtml\+xml/i.test(contentType)) {
-  throw new Error(`Unexpected active frontend content-type: ${contentType}`);
+  throw new Error(`Unexpected production frontend content-type: ${contentType}`);
 }
 if (failures.length) throw new Error(`Production contract failed: ${failures.join(', ')}`);

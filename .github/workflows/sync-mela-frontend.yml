@@ -1,5 +1,5 @@
 # Mela source synchronization: Supabase active frontend -> GitHub editable source
-# Sync trigger marker: v37 live-stats integration fix + CI provenance fallback
+# Sync trigger marker: v37 live-stats integration fix + CI provenance fallback + fresh validation
 name: Sync Mela frontend source
 
 on:

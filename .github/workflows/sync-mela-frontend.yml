@@ -1,5 +1,5 @@
 # Mela source synchronization: Supabase active frontend -> GitHub editable source
-# Sync trigger marker: v37 live-stats integration fix + CI diagnostics hardening
+# Sync trigger marker: v37 live-stats integration fix + CI provenance fallback
 name: Sync Mela frontend source
 
 on:
@@ -47,11 +47,16 @@ jobs:
           html = raw.decode('utf-8-sig', errors='replace')
           headers = Path('/tmp/mela-headers.txt').read_text(encoding='utf-8-sig', errors='replace')
           builds = re.findall(r'(?im)^x-mela-build:\s*([^\r\n]+)', headers)
-          build = builds[-1].strip() if builds else ''
+          header_build = builds[-1].strip() if builds else ''
+          title_match = re.search(r'(?is)<title>\s*Mela\s+v([0-9]+(?:\.[0-9]+)*)\b', html)
+          title_build = f'v{title_match.group(1)}' if title_match else ''
+          build = header_build or title_build
 
           print('MELA_CI_RESPONSE_BYTES=' + str(len(raw)))
           print('MELA_CI_RESPONSE_PREFIX=' + repr(html[:160]))
-          print('MELA_CI_BUILD_HEADER=' + repr(build))
+          print('MELA_CI_BUILD_HEADER=' + repr(header_build))
+          print('MELA_CI_BUILD_TITLE=' + repr(title_build))
+          print('MELA_CI_BUILD_EFFECTIVE=' + repr(build))
 
           normalized = html.lstrip()
           if not re.match(r'(?is)^(?:<!doctype\s+html\b|<html\b)', normalized):
@@ -59,10 +64,12 @@ jobs:
           if not re.search(r'(?is)<title>\s*Mela\b', html):
               raise SystemExit('Live mela-web response does not contain a Mela title')
           if not build:
-              raise SystemExit('Live mela-web response is missing X-Mela-Build')
+              raise SystemExit('Live mela-web response has neither X-Mela-Build nor a versioned Mela title')
+          Path('/tmp/mela-build.txt').write_text(build, encoding='utf-8')
           PY
 
           sha="$(sha256sum /tmp/mela-index.html | awk '{print $1}')"
+          build="$(cat /tmp/mela-build.txt)"
           cp /tmp/mela-index.html index.html
 
           cat > mela.sync.json <<EOF
@@ -70,14 +77,7 @@ jobs:
             "source": "supabase-active-frontend",
             "supabase_project_ref": "duizgtmbptmlbyipreqg",
             "edge_function": "mela-web",
-            "build": "$(python3 - <<'PY'
-          from pathlib import Path
-          import re
-          text = Path('/tmp/mela-headers.txt').read_text(encoding='utf-8-sig', errors='replace')
-          values = re.findall(r'(?im)^x-mela-build:\s*([^\r\n]+)', text)
-          print(values[-1].strip() if values else '')
-          PY
-          )",
+            "build": "$build",
             "sha256": "$sha",
             "production_launch": false
           }

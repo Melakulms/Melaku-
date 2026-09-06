@@ -1,3 +1,4 @@
+// Mela production contract: validate the live HTML response with Accept: text/html and versioned build fallback.
 const endpoint = process.env.MELA_QA_BUILD_ENDPOINT || 'https://duizgtmbptmlbyipreqg.supabase.co/functions/v1/mela-web';
 
 const controller = new AbortController();

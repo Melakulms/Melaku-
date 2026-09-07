@@ -25,6 +25,13 @@ env:
   # Repository variable MELA_FRONTEND_URL must point to the real HTML-serving production frontend.
   # Do not set this to a Supabase Edge Function URL.
   MELA_QA_BUILD_ENDPOINT: ${{ vars.MELA_FRONTEND_URL }}
+  # Authenticated registration E2E uses only a disposable test account/project.
+  # Secrets are never written to the repository or logs.
+  MELA_E2E_EMAIL: ${{ secrets.MELA_E2E_EMAIL }}
+  MELA_E2E_PASSWORD: ${{ secrets.MELA_E2E_PASSWORD }}
+  MELA_E2E_SERVICE_ROLE_KEY: ${{ secrets.MELA_E2E_SERVICE_ROLE_KEY }}
+  MELA_SUPABASE_ANON_KEY: ${{ secrets.MELA_SUPABASE_ANON_KEY }}
+  MELA_SUPABASE_URL: ${{ vars.MELA_SUPABASE_URL }}
 
 concurrency:
   group: mela-prelaunch-qa

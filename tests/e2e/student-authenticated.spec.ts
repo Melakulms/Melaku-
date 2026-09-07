@@ -94,7 +94,7 @@ test.describe('Student authenticated workflow E2E', () => {
     await expect(page.locator('#app')).toBeHidden();
   });
 
-  test('authenticated student can execute a real practice session end-to-end', async ({ page }) => {
+  test('authenticated student can execute the current mastery question workflow end-to-end', async ({ page }) => {
     await login(page);
 
     const session = await getSession(page);
@@ -102,8 +102,7 @@ test.describe('Student authenticated workflow E2E', () => {
     expect(session?.user?.id).toBeTruthy();
     const headers = authHeaders(session.access_token);
 
-    // Confirm the student profile is available through the same authenticated
-    // RLS path used by the application.
+    // Confirm the learner role through the same authenticated RLS path used by the app.
     const profileResponse = await page.request.get(
       `${supabaseUrl}/rest/v1/profiles?id=eq.${encodeURIComponent(session.user.id)}&select=id,role,account_status,role_selected_at&limit=1`,
       { headers }
@@ -115,29 +114,29 @@ test.describe('Student authenticated workflow E2E', () => {
     expect(profiles[0].role).toBe('student');
     expect(profiles[0].role_selected_at).toBeTruthy();
 
-    // Use a published topic that actually has a usable question. This avoids
-    // hard-coding a mutable production UUID while still exercising real data.
-    const topicsResponse = await page.request.get(
-      `${supabaseUrl}/rest/v1/practice_topics?is_published=eq.true&select=id&order=created_at.desc&limit=25`,
+    // The current frontend uses the v15 filtered question-session RPC, which
+    // delegates to the v18 implementation and creates mela_question_sessions.
+    // Discover active school-subject programs instead of hard-coding a mutable UUID.
+    const programsResponse = await page.request.get(
+      `${supabaseUrl}/rest/v1/mela_learning_programs?active=eq.true&program_kind=eq.school_subject&select=program_key,subject_title,grade_level&order=grade_level.asc&limit=100`,
       { headers }
     );
-    expect(topicsResponse.ok()).toBeTruthy();
-    const topics = await topicsResponse.json();
-    expect(Array.isArray(topics)).toBeTruthy();
-    expect(topics.length).toBeGreaterThan(0);
+    expect(programsResponse.ok()).toBeTruthy();
+    const programs = await programsResponse.json();
+    expect(Array.isArray(programs)).toBeTruthy();
+    expect(programs.length).toBeGreaterThan(0);
 
-    let practiceSessionId = '';
-    let selectedTopicId = '';
-    let selectedQuestionId = '';
+    let practice: any = null;
     let lastStartError = '';
 
-    for (const topic of topics) {
-      const startResponse = await page.request.post(`${supabaseUrl}/rest/v1/rpc/start_practice_session`, {
+    for (const program of programs) {
+      const startResponse = await page.request.post(`${supabaseUrl}/rest/v1/rpc/start_mela_filtered_question_session_v15`, {
         headers,
         data: {
-          p_topic_id: topic.id,
-          p_mode: 'untimed',
-          p_question_count: 1,
+          p_program_key: program.program_key,
+          p_chapter_id: null,
+          p_topic_id: null,
+          p_count: 5,
           p_difficulty: null,
         },
       });
@@ -145,75 +144,75 @@ test.describe('Student authenticated workflow E2E', () => {
         lastStartError = await startResponse.text();
         continue;
       }
-      practiceSessionId = await startResponse.json();
-      selectedTopicId = topic.id;
+      practice = await startResponse.json();
       break;
     }
 
-    expect(practiceSessionId, `No published topic could start a practice session: ${lastStartError}`).toBeTruthy();
-    expect(selectedTopicId).toBeTruthy();
+    expect(practice, `No active school subject could start a mastery session: ${lastStartError}`).toBeTruthy();
+    expect(practice.session_id).toBeTruthy();
+    expect(practice.program_key).toBeTruthy();
+    expect(practice.practice_mode).toBe('mastery');
+    expect(practice.quality_state).toBe('mastery_candidate');
+    expect(Array.isArray(practice.questions)).toBeTruthy();
+    expect(practice.questions.length).toBeGreaterThanOrEqual(5);
 
-    // The session/question rows are private to the authenticated student.
-    const questionsResponse = await page.request.get(
-      `${supabaseUrl}/rest/v1/practice_session_questions?session_id=eq.${encodeURIComponent(practiceSessionId)}&select=session_id,question_id,question_order,max_points&order=question_order.asc`,
-      { headers }
-    );
-    expect(questionsResponse.ok()).toBeTruthy();
-    const sessionQuestions = await questionsResponse.json();
-    expect(sessionQuestions).toHaveLength(1);
-    selectedQuestionId = sessionQuestions[0].question_id;
-    expect(sessionQuestions[0].session_id).toBe(practiceSessionId);
+    const sessionId = practice.session_id;
+    const question = practice.questions[0];
+    expect(question?.id).toBeTruthy();
+    expect(question?.id).toMatch(/^[0-9a-f-]{36}$/i);
 
-    // Submit a real response through the protected SECURITY DEFINER RPC. The
-    // RPC, not direct table writes, owns attempt creation and grading fields.
-    const submitResponse = await page.request.post(`${supabaseUrl}/rest/v1/rpc/submit_practice_response`, {
-      headers,
-      data: {
-        p_session_id: practiceSessionId,
-        p_question_id: selectedQuestionId,
-        p_response: { answer: '' },
-        p_time_spent_seconds: 1,
-        p_attachment_path: null,
-      },
-    });
-    expect(submitResponse.ok()).toBeTruthy();
-    const submission = await submitResponse.json();
-    expect(submission).toHaveProperty('auto_graded');
-
-    // With one question, completion is now valid and updates mastery/statistics.
-    const completeResponse = await page.request.post(`${supabaseUrl}/rest/v1/rpc/complete_practice_session`, {
-      headers,
-      data: { p_session_id: practiceSessionId },
-    });
-    expect(completeResponse.ok()).toBeTruthy();
-    const completion = await completeResponse.json();
-    expect(completion.session_id).toBe(practiceSessionId);
-    expect(completion.answered).toBe(1);
-
+    // The session row is owner-readable only. This proves the RPC-created
+    // session is tied to the authenticated student rather than merely returning
+    // an in-memory payload.
     const sessionRead = await page.request.get(
-      `${supabaseUrl}/rest/v1/practice_sessions?id=eq.${encodeURIComponent(practiceSessionId)}&select=id,user_id,status,answered_count,completed_at&limit=1`,
+      `${supabaseUrl}/rest/v1/mela_question_sessions?id=eq.${encodeURIComponent(sessionId)}&select=id,user_id,program_key,status,requested_count,answered_count,correct_count,score_percent,expires_at&limit=1`,
       { headers }
     );
     expect(sessionRead.ok()).toBeTruthy();
     const sessions = await sessionRead.json();
     expect(sessions).toHaveLength(1);
+    expect(sessions[0].id).toBe(sessionId);
     expect(sessions[0].user_id).toBe(session.user.id);
-    expect(sessions[0].status).toBe('completed');
-    expect(sessions[0].answered_count).toBe(1);
-    expect(sessions[0].completed_at).toBeTruthy();
+    expect(sessions[0].program_key).toBe(practice.program_key);
+    expect(sessions[0].status).toBe('started');
+    expect(sessions[0].requested_count).toBeGreaterThanOrEqual(5);
+    expect(sessions[0].answered_count).toBe(0);
 
-    // Finally prove the attempt created by the protected RPC is readable only
-    // through the authenticated student's own RLS scope.
-    const attemptRead = await page.request.get(
-      `${supabaseUrl}/rest/v1/practice_attempts?session_id=eq.${encodeURIComponent(practiceSessionId)}&question_id=eq.${encodeURIComponent(selectedQuestionId)}&select=id,user_id,session_id,question_id,time_spent_seconds&limit=1`,
+    // Submit the current session format. An empty response intentionally tests
+    // the safe unanswered/incorrect path without reading any answer key.
+    const submitResponse = await page.request.post(`${supabaseUrl}/rest/v1/rpc/submit_mela_question_session_v12`, {
+      headers,
+      data: {
+        p_session_id: sessionId,
+        p_answers: [{ question_id: question.id, response: '' }],
+      },
+    });
+    expect(submitResponse.ok()).toBeTruthy();
+    const completion = await submitResponse.json();
+    expect(completion.session_id).toBe(sessionId);
+    expect(completion.question_count).toBe(practice.questions.length);
+    expect(completion.answered_count).toBe(1);
+    expect(completion.correct_count).toBeGreaterThanOrEqual(0);
+    expect(completion.correct_count).toBeLessThanOrEqual(completion.answered_count);
+    expect(completion.score_percent).toBeGreaterThanOrEqual(0);
+    expect(completion.score_percent).toBeLessThanOrEqual(100);
+    expect(Array.isArray(completion.details)).toBeTruthy();
+    expect(completion.details).toHaveLength(practice.questions.length);
+
+    // Verify the persisted state transitioned atomically to submitted and is
+    // still owned by the authenticated student.
+    const submittedRead = await page.request.get(
+      `${supabaseUrl}/rest/v1/mela_question_sessions?id=eq.${encodeURIComponent(sessionId)}&select=id,user_id,status,answered_count,correct_count,score_percent,submitted_at&limit=1`,
       { headers }
     );
-    expect(attemptRead.ok()).toBeTruthy();
-    const attempts = await attemptRead.json();
-    expect(attempts).toHaveLength(1);
-    expect(attempts[0].user_id).toBe(session.user.id);
-    expect(attempts[0].session_id).toBe(practiceSessionId);
-    expect(attempts[0].question_id).toBe(selectedQuestionId);
-    expect(attempts[0].time_spent_seconds).toBe(1);
+    expect(submittedRead.ok()).toBeTruthy();
+    const submitted = await submittedRead.json();
+    expect(submitted).toHaveLength(1);
+    expect(submitted[0].user_id).toBe(session.user.id);
+    expect(submitted[0].status).toBe('submitted');
+    expect(submitted[0].answered_count).toBe(1);
+    expect(submitted[0].correct_count).toBe(completion.correct_count);
+    expect(Number(submitted[0].score_percent)).toBe(Number(completion.score_percent));
+    expect(submitted[0].submitted_at).toBeTruthy();
   });
 });

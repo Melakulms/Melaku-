@@ -32,6 +32,9 @@ env:
   MELA_E2E_SERVICE_ROLE_KEY: ${{ secrets.MELA_E2E_SERVICE_ROLE_KEY }}
   MELA_SUPABASE_ANON_KEY: ${{ secrets.MELA_SUPABASE_ANON_KEY }}
   MELA_SUPABASE_URL: ${{ vars.MELA_SUPABASE_URL }}
+  # Student acceptance E2E uses a dedicated verified test student account.
+  MELA_TEST_STUDENT_EMAIL: ${{ secrets.MELA_TEST_STUDENT_EMAIL }}
+  MELA_TEST_STUDENT_PASSWORD: ${{ secrets.MELA_TEST_STUDENT_PASSWORD }}
 
 concurrency:
   group: mela-prelaunch-qa

@@ -96,6 +96,9 @@ jobs:
       - name: Verify AI tool-call run linkage regression guard
         run: node qa/ai-tool-call-run-linkage.mjs
 
+      - name: Verify authenticated/pre-launch QA configuration
+        run: node qa/require-auth-e2e-env.mjs
+
       - name: Verify active production frontend contract
         run: node qa/production-contract.mjs
 

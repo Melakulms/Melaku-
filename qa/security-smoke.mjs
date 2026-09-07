@@ -16,6 +16,10 @@ const checks = [
   ['get_my_partner_dashboard', {}],
   ['review_sector_partner_registration', { p_request_id: '00000000-0000-0000-0000-000000000000', p_decision: 'rejected', p_notes: 'qa' }],
   ['submit_task_milestone', { p_milestone_id: '00000000-0000-0000-0000-000000000000', p_deliverable_url: 'https://example.invalid/qa', p_submission_note: 'qa' }],
+  // Current authenticated student mastery workflow RPCs. These must not be
+  // callable with the public publishable key alone.
+  ['start_mela_filtered_question_session_v15', { p_program_key: '__qa_invalid__', p_chapter_id: null, p_topic_id: null, p_count: 5, p_difficulty: null }],
+  ['submit_mela_question_session_v12', { p_session_id: '00000000-0000-0000-0000-000000000000', p_answers: [] }],
 ];
 
 let failures = 0;

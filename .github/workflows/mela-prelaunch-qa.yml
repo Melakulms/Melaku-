@@ -25,14 +25,11 @@ env:
   # Repository variable MELA_FRONTEND_URL must point to the real HTML-serving production frontend.
   # Do not set this to a Supabase Edge Function URL.
   MELA_QA_BUILD_ENDPOINT: ${{ vars.MELA_FRONTEND_URL }}
-  # Authenticated registration E2E uses only a disposable test account/project.
-  # Secrets are never written to the repository or logs.
   MELA_E2E_EMAIL: ${{ secrets.MELA_E2E_EMAIL }}
   MELA_E2E_PASSWORD: ${{ secrets.MELA_E2E_PASSWORD }}
   MELA_E2E_SERVICE_ROLE_KEY: ${{ secrets.MELA_E2E_SERVICE_ROLE_KEY }}
   MELA_SUPABASE_ANON_KEY: ${{ secrets.MELA_SUPABASE_ANON_KEY }}
   MELA_SUPABASE_URL: ${{ vars.MELA_SUPABASE_URL }}
-  # Student acceptance E2E uses a dedicated verified test student account.
   MELA_TEST_STUDENT_EMAIL: ${{ secrets.MELA_TEST_STUDENT_EMAIL }}
   MELA_TEST_STUDENT_PASSWORD: ${{ secrets.MELA_TEST_STUDENT_PASSWORD }}
 
@@ -86,10 +83,8 @@ jobs:
           assert "$('liveQuestions').textContent=N(d.active_questions)" not in html, 'out-of-scope live-stat formatter regression'
           assert 'const fmt=v=>Number(v||0).toLocaleString()' in html, 'live-stat formatter missing'
           assert "if($('hp'))$('hp').textContent=" not in html, 'async health must not overwrite localized hero text'
-          assert re.search(r'<option value="am">', html), 'Amharic option missing'
-          assert re.search(r'<option value="om">', html), 'Afaan Oromo option missing'
-          assert re.search(r'<option value="ti">', html), 'Tigrinya option missing'
-          assert re.search(r'<option value="so">', html), 'Somali option missing'
+          for locale in ('am','om','ti','so'):
+              assert re.search(rf'<option value="{locale}">', html), f'{locale} option missing'
           print(f'Pre-launch source invariants pass for {build}.')
           PY
 
@@ -115,21 +110,28 @@ jobs:
       - name: Install browser matrix
         run: npx playwright install --with-deps chromium firefox webkit
 
-      - name: Start local frontend
+      # IMPORTANT: test the actual Vite production output, not the repository source directory.
+      - name: Start built production preview
         shell: bash
         run: |
           set -euo pipefail
-          python3 -m http.server 4173 --bind 127.0.0.1 > /tmp/mela-http.log 2>&1 &
-          for i in {1..20}; do
+          npm run preview -- --host 127.0.0.1 --port 4173 > /tmp/mela-preview.log 2>&1 &
+          for i in {1..30}; do
             if curl --fail --silent http://127.0.0.1:4173/ >/dev/null; then exit 0; fi
             sleep 1
           done
-          cat /tmp/mela-http.log
+          cat /tmp/mela-preview.log
           exit 1
 
-      - name: Run complete desktop and mobile browser integration matrix
+      - name: Run complete desktop and mobile browser integration matrix against built output
         env:
           MELA_QA_BASE_URL: http://127.0.0.1:4173
+        run: npm run qa:all
+
+      # This is intentionally a separate gate: local preview success is not production success.
+      - name: Run browser matrix against deployed production frontend
+        env:
+          MELA_QA_BASE_URL: ${{ vars.MELA_FRONTEND_URL }}
         run: npm run qa:all
 
       - name: Upload QA diagnostics on failure
@@ -138,7 +140,7 @@ jobs:
         with:
           name: mela-prelaunch-qa-diagnostics
           path: |
-            /tmp/mela-http.log
+            /tmp/mela-preview.log
             test-results/
             playwright-report/
           if-no-files-found: ignore
